@@ -22,7 +22,15 @@ func main() {
 		panic("wrong filename")
 	}
 
-	file, err := os.Create(parameters.Filename)
+	var file *os.File
+	var err error
+
+	if parameters.Append {
+		file, err = os.OpenFile(parameters.Filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	} else {
+		file, err = os.Create(parameters.Filename)
+	}
+
 	if err != nil {
 		fmt.Println(err)
 		panic(err)
@@ -35,6 +43,8 @@ func main() {
 		panic(err)
 	}
 
+	start = start.UTC()
+
 	fmt.Printf("start: %s\n", start.String())
 	stop := start.Add(time.Duration(parameters.Granularity*300) * time.Second)
 	fmt.Printf("Stop: %s\n", stop.String())
@@ -44,8 +54,20 @@ func main() {
 	wr.Write([]string{"Time", "Volume", "Open", "Close", "High", "Low"})
 	wr.Flush()
 
+	now := time.Now().UTC()
+
 	for i := 1; i <= parameters.Iteration; i++ {
-		fmt.Println(start, stop)
+		fmt.Printf("Time: %s -> %s\n", start.String(), stop.String())
+		if start.After(now) {
+			fmt.Printf("break -> start: %s\n", start.String())
+			break
+		}
+
+		if stop.After(now) {
+			stop = time.Now()
+			fmt.Printf("new stop: %s\n", stop.String())
+		}
+
 		params := coinbasepro.GetHistoricRatesParams{
 			Start:       start,
 			End:         stop,
@@ -55,17 +77,8 @@ func main() {
 		start = stop
 		stop = start.Add(time.Duration(parameters.Granularity*300) * time.Second)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("History error: %s -> %s - %s\n", err.Error(), start.String(), stop.String())
 			continue
-		}
-		if stop.After(time.Now()) {
-			stop = time.Now()
-			fmt.Println("stop: ", stop)
-		}
-
-		if start.After(time.Now()) {
-			fmt.Println("break: ", start)
-			break
 		}
 
 		for x := range ret {
