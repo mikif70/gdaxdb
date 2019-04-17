@@ -82,8 +82,14 @@ func main() {
 		}
 
 		for x := range ret {
+			var tm string
+			if parameters.Timestamp {
+				tm = fmt.Sprintf("%d", ret[len(ret)-1-x].Time.Unix())
+			} else {
+				tm = ret[len(ret)-1-x].Time.Format("2006-01-02 15:04:05")
+			}
 			str := []string{
-				ret[len(ret)-1-x].Time.String(),
+				tm,
 				fmt.Sprintf("%f", ret[len(ret)-1-x].Volume),
 				fmt.Sprintf("%f", ret[len(ret)-1-x].Open),
 				fmt.Sprintf("%f", ret[len(ret)-1-x].Close),
