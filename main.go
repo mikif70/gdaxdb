@@ -57,7 +57,7 @@ func main() {
 	now := time.Now().UTC()
 
 	for i := 1; i <= parameters.Iteration; i++ {
-		fmt.Printf("Time: %s -> %s\n", start.String(), stop.String())
+		fmt.Printf("%d) Time: %s -> %s\n", i, start.String(), stop.String())
 		if start.After(now) {
 			fmt.Printf("break -> start: %s\n", start.String())
 			break
