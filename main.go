@@ -24,12 +24,15 @@ func main() {
 
 	var file *os.File
 	var err error
+	//	var rd *csv.Reader
 
 	if parameters.Append {
 		file, err = os.OpenFile(parameters.Filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		//		rd = csv.NewReader(file)
 	} else {
 		file, err = os.Create(parameters.Filename)
 	}
+	defer file.Close()
 
 	if err != nil {
 		fmt.Println(err)
@@ -47,7 +50,7 @@ func main() {
 
 	fmt.Printf("start: %s\n", start.String())
 	stop := start.Add(time.Duration(parameters.Granularity*300) * time.Second)
-	fmt.Printf("Stop: %s\n", stop.String())
+	//	fmt.Printf("Stop: %s\n", stop.String())
 
 	wr := csv.NewWriter(file)
 
@@ -57,15 +60,15 @@ func main() {
 	now := time.Now().UTC()
 
 	for i := 1; i <= parameters.Iteration; i++ {
-		fmt.Printf("%d) Time: %s -> %s\n", i, start.String(), stop.String())
+		fmt.Printf("%d) Time: %s -> %s", i, start.String(), stop.String())
 		if start.After(now) {
-			fmt.Printf("break -> start: %s\n", start.String())
+			fmt.Printf(" - break -> start: %s\n", start.String())
 			break
 		}
 
 		if stop.After(now) {
 			stop = time.Now()
-			fmt.Printf("new stop: %s\n", stop.String())
+			fmt.Printf(" - new stop: %s", stop.String())
 		}
 
 		params := coinbasepro.GetHistoricRatesParams{
@@ -74,10 +77,14 @@ func main() {
 			Granularity: int(parameters.Granularity),
 		}
 		ret, err := cli.GetHistoricRates(parameters.Product, params)
+		if err != nil {
+			fmt.Printf(" - get error: %+v", err.Error())
+		}
+		fmt.Printf(" - retval = %d", len(ret))
 		start = stop
 		stop = start.Add(time.Duration(parameters.Granularity*300) * time.Second)
 		if err != nil {
-			fmt.Printf("History error: %s -> %s - %s\n", err.Error(), start.String(), stop.String())
+			fmt.Printf(" - history error: %s -> %s - %s\n", err.Error(), start.String(), stop.String())
 			continue
 		}
 
@@ -100,6 +107,7 @@ func main() {
 			wr.Flush()
 		}
 		time.Sleep(time.Second * 1)
+		fmt.Print("\n")
 	}
 
 }
