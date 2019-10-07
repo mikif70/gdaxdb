@@ -4,11 +4,40 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
+	"io"
 	"os"
+	"strings"
 	"time"
 
+	//	coinbasepro "github.com/preichenberger/go-coinbasepro/v2"
 	coinbasepro "github.com/preichenberger/go-coinbasepro"
 )
+
+func getLastLineWithSeek(fileHandle *os.File) string {
+	line := ""
+	var cursor int64 = 0
+	stat, _ := fileHandle.Stat()
+	filesize := stat.Size()
+	for {
+		cursor -= 1
+		fileHandle.Seek(cursor, io.SeekEnd)
+
+		char := make([]byte, 1)
+		fileHandle.Read(char)
+
+		if cursor != -1 && (char[0] == 10 || char[0] == 13) { // stop if we find a line
+			break
+		}
+
+		line = fmt.Sprintf("%s%s", string(char), line) // there is more efficient way
+
+		if cursor == -filesize { // stop if we are at the begining
+			break
+		}
+	}
+
+	return line
+}
 
 func main() {
 
@@ -27,7 +56,7 @@ func main() {
 	//	var rd *csv.Reader
 
 	if parameters.Append {
-		file, err = os.OpenFile(parameters.Filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		file, err = os.OpenFile(parameters.Filename, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
 		//		rd = csv.NewReader(file)
 	} else {
 		file, err = os.Create(parameters.Filename)
@@ -39,11 +68,28 @@ func main() {
 		panic(err)
 	}
 
-	// RFC3339 = 2006-01-02T15:04:05Z
-	start, err := time.Parse(time.RFC3339, parameters.Start)
-	if err != nil {
-		fmt.Println(err)
-		panic(err)
+	var start time.Time
+
+	if parameters.Append {
+		fmt.Println("searching last line....")
+		line := getLastLineWithSeek(file)
+		l := strings.Split(line, ",")
+		fmt.Printf("%s\n", l[0])
+		loc := time.Now().Location()
+		//		loc, _ := time.LoadLocation("Europe/Berlin")
+		start, err = time.ParseInLocation("2006-01-02 15:04:05", l[0], loc)
+		if err != nil {
+			fmt.Println(err)
+			panic(err)
+		}
+		start = start.Add(time.Duration(parameters.Granularity) * time.Second)
+	} else {
+		// RFC3339 = 2006-01-02T15:04:05Z
+		start, err = time.Parse(time.RFC3339, parameters.Start)
+		if err != nil {
+			fmt.Println(err)
+			panic(err)
+		}
 	}
 
 	start = start.UTC()
@@ -54,8 +100,10 @@ func main() {
 
 	wr := csv.NewWriter(file)
 
-	wr.Write([]string{"Time", "Volume", "Open", "Close", "High", "Low"})
-	wr.Flush()
+	if !parameters.Append {
+		wr.Write([]string{"Time", "Volume", "Open", "Close", "High", "Low"})
+		wr.Flush()
+	}
 
 	now := time.Now().UTC()
 

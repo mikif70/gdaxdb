@@ -13,6 +13,7 @@ type Parameters struct {
 	Iteration   int
 	Append      bool
 	Timestamp   bool
+	Debug       bool
 }
 
 var (
@@ -27,4 +28,5 @@ func init() {
 	flag.IntVar(&parameters.Iteration, "i", 1, "iteration")
 	flag.BoolVar(&parameters.Append, "a", false, "Append to filename")
 	flag.BoolVar(&parameters.Timestamp, "t", false, "Save time as timestamp")
+	flag.BoolVar(&parameters.Debug, "D", false, "Debug")
 }
